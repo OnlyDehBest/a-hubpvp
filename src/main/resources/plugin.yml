@@ -1,0 +1,6 @@
+name: a-hubpvp
+version: '1.0'
+main: it.onlynelchilling.ahubpvp.HubPvPSword
+api-version: '1.21'
+author: onlynelchilling
+

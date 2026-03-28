@@ -1,0 +1,87 @@
+settings:
+  give-on-join: true
+  instant-respawn: true
+  death-particle:
+    enabled: true
+    type: EXPLOSION
+    count: 30
+
+sounds:
+  countdown:
+    enabled: true
+    type: BLOCK_NOTE_BLOCK_PLING
+    volume: 1.0
+    pitch: 1.5
+  pvp-activated:
+    enabled: true
+    type: ENTITY_ENDER_DRAGON_GROWL
+    volume: 0.5
+    pitch: 1.2
+  pvp-deactivated:
+    enabled: true
+    type: ENTITY_EXPERIENCE_ORB_PICKUP
+    volume: 1.0
+    pitch: 0.8
+
+sword:
+  material: NETHERITE_SWORD
+  display-name: "&#FFCE49🗡 &#FFD49Bᴘᴠᴘ ѕᴡᴏʀᴅ"
+  lore: ""
+  hold-time-seconds: 5
+  deactivate-time-seconds: 5
+  slot: 7
+  enchantments:
+    SHARPNESS: 3
+    UNBREAKING: 2
+
+armor:
+  helmet:
+    material: NETHERITE_HELMET
+    display-name: "&#FFD49Bᴀʀᴍᴀᴛᴜʀᴀ ᴅᴇʟ ᴄᴀᴠᴀʟɪᴇʀᴇ"
+    lore: ""
+    enchantments:
+      PROTECTION: 2
+    trim:
+      enabled: true
+      pattern: SENTRY
+      material: NETHERITE
+  chestplate:
+    material: NETHERITE_CHESTPLATE
+    display-name: "&#FFD49Bᴀʀᴍᴀᴛᴜʀᴀ ᴅᴇʟ ᴄᴀᴠᴀʟɪᴇʀᴇ"
+    lore: ""
+    enchantments:
+      PROTECTION: 2
+    trim:
+      enabled: true
+      pattern: SENTRY
+      material: NETHERITE
+  leggings:
+    material: NETHERITE_LEGGINGS
+    display-name: "&#FFD49Bᴀʀᴍᴀᴛᴜʀᴀ ᴅᴇʟ ᴄᴀᴠᴀʟɪᴇʀᴇ"
+    lore: ""
+    enchantments:
+      PROTECTION: 2
+    trim:
+      enabled: true
+      pattern: SENTRY
+      material: NETHERITE
+  boots:
+    material: NETHERITE_BOOTS
+    display-name: "&#FFD49Bᴀʀᴍᴀᴛᴜʀᴀ ᴅᴇʟ ᴄᴀᴠᴀʟɪᴇʀᴇ"
+    lore: ""
+    enchantments:
+      PROTECTION: 2
+    trim:
+      enabled: true
+      pattern: SENTRY
+      material: NETHERITE
+
+messages:
+  pvp-activated: "&4&lPVP &8➟ &aHai attivato la modalità PvP!"
+  config-reloaded: "&aConfig ricaricata con successo!"
+  no-permission: "&cNon hai il permesso per eseguire questo comando."
+  already-in-pvp: "&cSei gia' in modalita' PvP!"
+  countdown: "&4&lPVP &8➟ &fLa modalità PvP si &aattiverà &ftra &e%seconds% secondi..."
+  countdown-deactivate: "&4&lPVP &8➟ &fLa modalità PvP si &cdisattiverà &ftra &e%seconds% secondi..."
+  pvp-deactivated: "&4&lPVP &8➟ &cHai disattivato la modalità PvP!"
+  kill-message: "&6⚔ &e%killer% &7ha ucciso &c%victim%&7!"
