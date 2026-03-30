@@ -131,6 +131,8 @@ public final class PvPSwordListener implements Listener {
         if (pvpActive.remove(uuid) != null) {
             restoreInventory(player);
         }
+
+        savedContents.remove(uuid);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
