@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import it.onlynelchilling.ahubpvp.commands.HubPvPCommand;
 import it.onlynelchilling.ahubpvp.config.ConfigCache;
 import it.onlynelchilling.ahubpvp.listeners.PvPSwordListener;
+import it.onlynelchilling.ahubpvp.tasks.PvPCounterTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class HubPvPSword extends JavaPlugin {
@@ -13,11 +14,11 @@ public final class HubPvPSword extends JavaPlugin {
 
     @Override
     public void onEnable() {
-
         this.configCache = new ConfigCache(this);
 
         this.swordListener = new PvPSwordListener(this);
         getServer().getPluginManager().registerEvents(swordListener, this);
+        getServer().getScheduler().runTaskTimerAsynchronously(this, new PvPCounterTask(swordListener), 20L, 20L);
 
         PaperCommandManager commandManager = new PaperCommandManager(this);
         commandManager.registerCommand(new HubPvPCommand(this));
@@ -28,6 +29,7 @@ public final class HubPvPSword extends JavaPlugin {
         if (swordListener != null) {
             swordListener.cleanup();
         }
+
         getServer().getScheduler().cancelTasks(this);
     }
 
@@ -35,4 +37,3 @@ public final class HubPvPSword extends JavaPlugin {
         return configCache;
     }
 }
-

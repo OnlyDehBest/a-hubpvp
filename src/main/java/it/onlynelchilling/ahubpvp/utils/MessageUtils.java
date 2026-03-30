@@ -78,37 +78,46 @@ public final class MessageUtils {
     private static String toMiniMessage(String input) {
         Matcher matcher = HEX_PATTERN.matcher(input);
         StringBuilder sb = new StringBuilder();
+
         while (matcher.find()) {
             matcher.appendReplacement(sb, DECO_RESET + "<color:#" + matcher.group(1) + ">");
         }
+
         matcher.appendTail(sb);
         input = sb.toString();
 
         StringBuilder result = new StringBuilder();
+
         for (int i = 0; i < input.length(); i++) {
             if (input.charAt(i) == '&' && i + 1 < input.length()) {
                 char code = Character.toLowerCase(input.charAt(i + 1));
+
                 if (code == 'r') {
                     result.append("<reset>");
                     i++;
                     continue;
                 }
+
                 String colorTag = COLOR_MAP.get(code);
+
                 if (colorTag != null) {
                     result.append(DECO_RESET).append(colorTag);
                     i++;
                     continue;
                 }
+
                 String formatTag = FORMAT_MAP.get(code);
+
                 if (formatTag != null) {
                     result.append(formatTag);
                     i++;
                     continue;
                 }
             }
+
             result.append(input.charAt(i));
         }
+
         return result.toString();
     }
 }
-

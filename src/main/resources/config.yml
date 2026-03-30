@@ -1,10 +1,11 @@
 settings:
   give-on-join: true
-  instant-respawn: true
+
   death-particle:
     enabled: true
     type: EXPLOSION
     count: 30
+
   sounds:
     countdown:
       enabled: true

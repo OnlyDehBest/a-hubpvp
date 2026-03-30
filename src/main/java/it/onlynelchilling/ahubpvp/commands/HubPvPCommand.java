@@ -20,12 +20,11 @@ public final class HubPvPCommand extends BaseCommand {
     }
 
     @Default
-
     @Subcommand("reload")
     @CommandPermission("hubpvp.reload")
     public void onReload(Player player) {
         plugin.getConfigCache().reload();
+
         MessageUtils.send(player, plugin.getConfigCache().getMessage("config-reloaded"));
     }
 }
-

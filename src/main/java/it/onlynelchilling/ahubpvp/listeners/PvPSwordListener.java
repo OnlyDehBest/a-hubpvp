@@ -18,14 +18,12 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.scheduler.BukkitTask;
 
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,108 +32,61 @@ public final class PvPSwordListener implements Listener {
     private static final int CENTER_SLOT = 4;
 
     private final HubPvPSword plugin;
-    private final ConfigCache cache;
-    private final BukkitTask tickTask;
 
     private final Map<UUID, Integer> activateCountdowns = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> deactivateCountdowns = new ConcurrentHashMap<>();
-    private final Set<UUID> pvpActive = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Boolean> pvpActive = new ConcurrentHashMap<>();
     private final Map<UUID, ItemStack[]> savedContents = new ConcurrentHashMap<>();
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;
-        this.cache = plugin.getConfigCache();
-        this.tickTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 20L, 20L);
     }
 
-    private void tick() {
-        ConfigCache c = this.cache;
+    public Map<UUID, Integer> getActivateCountdowns() {
+        return activateCountdowns;
+    }
 
-        Iterator<Map.Entry<UUID, Integer>> actIt = activateCountdowns.entrySet().iterator();
-        while (actIt.hasNext()) {
-            Map.Entry<UUID, Integer> entry = actIt.next();
-            UUID uuid = entry.getKey();
-            Player player = plugin.getServer().getPlayer(uuid);
+    public Map<UUID, Integer> getDeactivateCountdowns() {
+        return deactivateCountdowns;
+    }
 
-            if (player == null || !player.isOnline() || !c.isPvPSword(player.getInventory().getItemInMainHand())) {
-                actIt.remove();
-                continue;
-            }
-
-            int remaining = entry.getValue();
-            if (remaining <= 0) {
-                actIt.remove();
-                activatePvP(player);
-                continue;
-            }
-
-            MessageUtils.send(player, c.getMessage("countdown"), "%seconds%", String.valueOf(remaining));
-            if (c.isCountdownSoundEnabled()) {
-                player.playSound(player.getLocation(), c.getCountdownSoundType(), c.getCountdownSoundVolume(), c.getCountdownSoundPitch());
-            }
-            entry.setValue(remaining - 1);
-        }
-
-        Iterator<Map.Entry<UUID, Integer>> deactIt = deactivateCountdowns.entrySet().iterator();
-        while (deactIt.hasNext()) {
-            Map.Entry<UUID, Integer> entry = deactIt.next();
-            UUID uuid = entry.getKey();
-            Player player = plugin.getServer().getPlayer(uuid);
-
-            if (player == null || !player.isOnline()) {
-                deactIt.remove();
-                continue;
-            }
-
-            int remaining = entry.getValue();
-            if (remaining <= 0) {
-                deactIt.remove();
-                deactivatePvP(player);
-                continue;
-            }
-
-            MessageUtils.send(player, c.getMessage("countdown-deactivate"), "%seconds%", String.valueOf(remaining));
-            if (c.isCountdownSoundEnabled()) {
-                player.playSound(player.getLocation(), c.getCountdownSoundType(), c.getCountdownSoundVolume(), c.getCountdownSoundPitch());
-            }
-            entry.setValue(remaining - 1);
-        }
+    public ConfigCache getCache() {
+        return plugin.getConfigCache();
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        ConfigCache c = this.cache;
-        if (!c.isGiveOnJoin()) return;
-        event.getPlayer().getInventory().setItem(c.getSwordSlot(), c.getSword());
+        if (!getCache().isGiveOnJoin()) return;
+
+        event.getPlayer().getInventory().setItem(getCache().getSwordSlot(), getCache().getSword());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onItemHeld(PlayerItemHeldEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        ConfigCache c = this.cache;
 
         ItemStack newItem = player.getInventory().getItem(event.getNewSlot());
-        boolean holdingSword = c.isPvPSword(newItem);
+        boolean holdingSword = getCache().isPvPSword(newItem);
 
         if (holdingSword) {
             deactivateCountdowns.remove(uuid);
 
-            if (pvpActive.contains(uuid) || activateCountdowns.containsKey(uuid)) return;
+            if (pvpActive.containsKey(uuid) || activateCountdowns.containsKey(uuid)) return;
 
-            activateCountdowns.put(uuid, c.getHoldTimeSeconds());
+            activateCountdowns.put(uuid, getCache().getHoldTimeSeconds());
         } else {
             activateCountdowns.remove(uuid);
 
-            if (!pvpActive.contains(uuid) || deactivateCountdowns.containsKey(uuid)) return;
+            if (!pvpActive.containsKey(uuid) || deactivateCountdowns.containsKey(uuid)) return;
 
-            deactivateCountdowns.put(uuid, c.getDeactivateTimeSeconds());
+            deactivateCountdowns.put(uuid, getCache().getDeactivateTimeSeconds());
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
-        if (cache.isPvPSword(event.getItemDrop().getItemStack())) {
+        if (getCache().isPvPSword(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
         }
     }
@@ -143,15 +94,17 @@ public final class PvPSwordListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
+
         UUID uuid = player.getUniqueId();
 
-        if (cache.isPvPSword(event.getCurrentItem()) || cache.isPvPSword(event.getCursor())) {
+        if (getCache().isPvPSword(event.getCurrentItem()) || getCache().isPvPSword(event.getCursor())) {
             event.setCancelled(true);
             return;
         }
 
-        if (pvpActive.contains(uuid)) {
+        if (pvpActive.containsKey(uuid)) {
             int slot = event.getSlot();
+
             if (slot >= 36 && slot <= 39) {
                 event.setCancelled(true);
             }
@@ -171,9 +124,11 @@ public final class PvPSwordListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+
         activateCountdowns.remove(uuid);
         deactivateCountdowns.remove(uuid);
-        if (pvpActive.remove(uuid)) {
+
+        if (pvpActive.remove(uuid) != null) {
             restoreInventory(player);
         }
     }
@@ -181,7 +136,8 @@ public final class PvPSwordListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim) || !(event.getDamager() instanceof Player attacker)) return;
-        if (!pvpActive.contains(attacker.getUniqueId()) || !pvpActive.contains(victim.getUniqueId())) {
+
+        if (!pvpActive.containsKey(attacker.getUniqueId()) || !pvpActive.containsKey(victim.getUniqueId())) {
             event.setCancelled(true);
         }
     }
@@ -189,81 +145,90 @@ public final class PvPSwordListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
-        ConfigCache c = this.cache;
+        UUID uuid = victim.getUniqueId();
+
+        if (!pvpActive.containsKey(uuid)) return;
 
         event.getDrops().clear();
         event.setDroppedExp(0);
 
-        if (c.isDeathParticleEnabled()) {
+        if (getCache().isDeathParticleEnabled()) {
             Location loc = victim.getLocation();
-            loc.getWorld().spawnParticle(c.getDeathParticleType(), loc.add(0, 1, 0),
-                    c.getDeathParticleCount(), 0.5, 0.5, 0.5, 0.1);
+
+            loc.getWorld().spawnParticle(getCache().getDeathParticleType(), loc.add(0, 1, 0),
+                    getCache().getDeathParticleCount(), 0.5, 0.5, 0.5, 0.1);
         }
 
-        if (pvpActive.contains(victim.getUniqueId())) {
-            Player killer = victim.getKiller();
-            if (killer != null && pvpActive.contains(killer.getUniqueId())) {
-                Component msg = MessageUtils.parse(c.getMessage("kill-message")
-                        .replace("%killer%", killer.getName())
-                        .replace("%victim%", victim.getName()));
-                MessageUtils.broadcast(plugin.getServer().getOnlinePlayers(), msg);
-                healFull(killer);
-            }
-            pvpActive.remove(victim.getUniqueId());
-            savedContents.remove(victim.getUniqueId());
+        Player killer = victim.getKiller();
+
+        if (killer != null && pvpActive.containsKey(killer.getUniqueId())) {
+            Component msg = MessageUtils.parse(getCache().getMessage("kill-message")
+                    .replace("%killer%", killer.getName())
+                    .replace("%victim%", victim.getName()));
+
+            MessageUtils.broadcast(plugin.getServer().getOnlinePlayers(), msg);
+            healFull(killer);
         }
 
-        if (c.isInstantRespawn()) {
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (victim.isDead()) {
-                    victim.spigot().respawn();
-                }
-                if (c.isGiveOnJoin()) {
-                    victim.getInventory().setItem(c.getSwordSlot(), c.getSword());
-                }
-            }, 1L);
+        pvpActive.remove(uuid);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        if (!savedContents.containsKey(uuid)) return;
+
+        restoreInventory(player);
+        healFull(player);
+
+        if (getCache().isGiveOnJoin()) {
+            player.getInventory().setItem(getCache().getSwordSlot(), getCache().getSword());
         }
     }
 
-    private void activatePvP(Player player) {
+    public void activatePvP(Player player) {
         UUID uuid = player.getUniqueId();
-        ConfigCache c = this.cache;
-
         PlayerInventory inv = player.getInventory();
+
         savedContents.put(uuid, inv.getContents().clone());
 
-        pvpActive.add(uuid);
+        pvpActive.put(uuid, true);
         inv.clear();
 
-        inv.setHelmet(c.getHelmet());
-        inv.setChestplate(c.getChestplate());
-        inv.setLeggings(c.getLeggings());
-        inv.setBoots(c.getBoots());
-        inv.setItem(CENTER_SLOT, c.getSword());
+        inv.setHelmet(getCache().getHelmet());
+        inv.setChestplate(getCache().getChestplate());
+        inv.setLeggings(getCache().getLeggings());
+        inv.setBoots(getCache().getBoots());
+        inv.setItem(CENTER_SLOT, getCache().getSword());
         inv.setHeldItemSlot(CENTER_SLOT);
 
         healFull(player);
-        MessageUtils.send(player, c.getMessage("pvp-activated"));
-        if (c.isActivatedSoundEnabled()) {
-            player.playSound(player.getLocation(), c.getActivatedSoundType(), c.getActivatedSoundVolume(), c.getActivatedSoundPitch());
+        MessageUtils.send(player, getCache().getMessage("pvp-activated"));
+
+        if (getCache().isActivatedSoundEnabled()) {
+            player.playSound(player.getLocation(), getCache().getActivatedSoundType(), getCache().getActivatedSoundVolume(), getCache().getActivatedSoundPitch());
         }
     }
 
-    private void deactivatePvP(Player player) {
+    public void deactivatePvP(Player player) {
         UUID uuid = player.getUniqueId();
-        ConfigCache c = this.cache;
+
         pvpActive.remove(uuid);
         restoreInventory(player);
 
         healFull(player);
-        MessageUtils.send(player, c.getMessage("pvp-deactivated"));
-        if (c.isDeactivatedSoundEnabled()) {
-            player.playSound(player.getLocation(), c.getDeactivatedSoundType(), c.getDeactivatedSoundVolume(), c.getDeactivatedSoundPitch());
+        MessageUtils.send(player, getCache().getMessage("pvp-deactivated"));
+
+        if (getCache().isDeactivatedSoundEnabled()) {
+            player.playSound(player.getLocation(), getCache().getDeactivatedSoundType(), getCache().getDeactivatedSoundVolume(), getCache().getDeactivatedSoundPitch());
         }
     }
 
     private void healFull(Player player) {
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
+
         if (attr != null) {
             player.setHealth(attr.getValue());
         }
@@ -272,27 +237,37 @@ public final class PvPSwordListener implements Listener {
     private void restoreInventory(Player player) {
         UUID uuid = player.getUniqueId();
         PlayerInventory inv = player.getInventory();
+
         inv.clear();
 
         ItemStack[] contents = savedContents.remove(uuid);
+
         if (contents != null) {
             inv.setContents(contents);
         }
     }
 
     public void cleanup() {
-        tickTask.cancel();
         activateCountdowns.clear();
         deactivateCountdowns.clear();
 
-        for (UUID uuid : Set.copyOf(pvpActive)) {
+        var iterator = pvpActive.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+
+            UUID uuid = entry.getKey();
             Player player = plugin.getServer().getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                restoreInventory(player);
+
+            if (player == null || !player.isOnline()) {
+                iterator.remove();
+                continue;
             }
+
+            iterator.remove();
+            restoreInventory(player);
         }
 
-        pvpActive.clear();
         savedContents.clear();
     }
 }
