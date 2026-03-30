@@ -34,9 +34,5 @@ public final class HubPvPSword extends JavaPlugin {
     public ConfigCache getConfigCache() {
         return configCache;
     }
-
-    public PvPSwordListener getSwordListener() {
-        return swordListener;
-    }
 }
 

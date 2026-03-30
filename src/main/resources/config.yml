@@ -5,23 +5,22 @@ settings:
     enabled: true
     type: EXPLOSION
     count: 30
-
-sounds:
-  countdown:
-    enabled: true
-    type: BLOCK_NOTE_BLOCK_PLING
-    volume: 1.0
-    pitch: 1.5
-  pvp-activated:
-    enabled: true
-    type: ENTITY_ENDER_DRAGON_GROWL
-    volume: 0.5
-    pitch: 1.2
-  pvp-deactivated:
-    enabled: true
-    type: ENTITY_EXPERIENCE_ORB_PICKUP
-    volume: 1.0
-    pitch: 0.8
+  sounds:
+    countdown:
+      enabled: true
+      type: BLOCK_NOTE_BLOCK_PLING
+      volume: 1.0
+      pitch: 1.5
+    pvp-activated:
+      enabled: true
+      type: ENTITY_ENDER_DRAGON_GROWL
+      volume: 0.5
+      pitch: 1.2
+    pvp-deactivated:
+      enabled: true
+      type: ENTITY_EXPERIENCE_ORB_PICKUP
+      volume: 1.0
+      pitch: 0.8
 
 sword:
   material: NETHERITE_SWORD

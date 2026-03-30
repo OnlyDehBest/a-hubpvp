@@ -23,7 +23,6 @@ import java.util.Map;
 
 public final class ConfigCache {
 
-    private final HubPvPSword plugin;
     private final NamespacedKey pvpKey;
     private final ConfigUtils configFile;
 
@@ -33,7 +32,6 @@ public final class ConfigCache {
     private ItemStack chestplate;
     private ItemStack leggings;
     private ItemStack boots;
-    private int holdTimeTicks;
     private int holdTimeSeconds;
     private int deactivateTimeSeconds;
     private int swordSlot;
@@ -57,7 +55,6 @@ public final class ConfigCache {
     private final Map<String, String> messages = new HashMap<>();
 
     public ConfigCache(HubPvPSword plugin) {
-        this.plugin = plugin;
         this.pvpKey = new NamespacedKey(plugin, "pvp_sword");
         this.configFile = new ConfigUtils(plugin, "config");
         reload();
@@ -66,27 +63,26 @@ public final class ConfigCache {
     public void reload() {
         configFile.reload();
 
-        this.holdTimeSeconds = configFile.getInt("sword.hold-time-seconds", 5);
-        this.holdTimeTicks = this.holdTimeSeconds * 20;
-        this.deactivateTimeSeconds = configFile.getInt("sword.deactivate-time-seconds", 5);
-        this.swordSlot = configFile.getInt("sword.slot", 0);
-        this.giveOnJoin = configFile.getBoolean("settings.give-on-join", true);
-        this.instantRespawn = configFile.getBoolean("settings.instant-respawn", true);
-        this.deathParticleEnabled = configFile.getBoolean("settings.death-particle.enabled", true);
-        this.deathParticleType = Particle.valueOf(configFile.getString("settings.death-particle.type", "EXPLOSION").toUpperCase());
-        this.deathParticleCount = configFile.getInt("settings.death-particle.count", 30);
-        this.countdownSoundEnabled = configFile.getBoolean("settings.sounds.countdown.enabled", true);
-        this.countdownSoundType = Sound.valueOf(configFile.getString("settings.sounds.countdown.type", "BLOCK_NOTE_BLOCK_PLING").toUpperCase());
-        this.countdownSoundVolume = (float) configFile.getDouble("settings.sounds.countdown.volume", 1.0);
-        this.countdownSoundPitch = (float) configFile.getDouble("settings.sounds.countdown.pitch", 1.5);
-        this.activatedSoundEnabled = configFile.getBoolean("settings.sounds.pvp-activated.enabled", true);
-        this.activatedSoundType = Sound.valueOf(configFile.getString("settings.sounds.pvp-activated.type", "ENTITY_ENDER_DRAGON_GROWL").toUpperCase());
-        this.activatedSoundVolume = (float) configFile.getDouble("settings.sounds.pvp-activated.volume", 0.5);
-        this.activatedSoundPitch = (float) configFile.getDouble("settings.sounds.pvp-activated.pitch", 1.2);
-        this.deactivatedSoundEnabled = configFile.getBoolean("settings.sounds.pvp-deactivated.enabled", true);
-        this.deactivatedSoundType = Sound.valueOf(configFile.getString("settings.sounds.pvp-deactivated.type", "ENTITY_EXPERIENCE_ORB_PICKUP").toUpperCase());
-        this.deactivatedSoundVolume = (float) configFile.getDouble("settings.sounds.pvp-deactivated.volume", 1.0);
-        this.deactivatedSoundPitch = (float) configFile.getDouble("settings.sounds.pvp-deactivated.pitch", 0.8);
+        this.holdTimeSeconds = configFile.getInt("sword.hold-time-seconds");
+        this.deactivateTimeSeconds = configFile.getInt("sword.deactivate-time-seconds");
+        this.swordSlot = configFile.getInt("sword.slot");
+        this.giveOnJoin = configFile.getBoolean("settings.give-on-join");
+        this.instantRespawn = configFile.getBoolean("settings.instant-respawn");
+        this.deathParticleEnabled = configFile.getBoolean("settings.death-particle.enabled");
+        this.deathParticleType = Particle.valueOf(configFile.getString("settings.death-particle.type").toUpperCase());
+        this.deathParticleCount = configFile.getInt("settings.death-particle.count");
+        this.countdownSoundEnabled = configFile.getBoolean("settings.sounds.countdown.enabled");
+        this.countdownSoundType = Sound.valueOf(configFile.getString("settings.sounds.countdown.type").toUpperCase());
+        this.countdownSoundVolume = (float) configFile.getDouble("settings.sounds.countdown.volume");
+        this.countdownSoundPitch = (float) configFile.getDouble("settings.sounds.countdown.pitch");
+        this.activatedSoundEnabled = configFile.getBoolean("settings.sounds.pvp-activated.enabled");
+        this.activatedSoundType = Sound.valueOf(configFile.getString("settings.sounds.pvp-activated.type").toUpperCase());
+        this.activatedSoundVolume = (float) configFile.getDouble("settings.sounds.pvp-activated.volume");
+        this.activatedSoundPitch = (float) configFile.getDouble("settings.sounds.pvp-activated.pitch");
+        this.deactivatedSoundEnabled = configFile.getBoolean("settings.sounds.pvp-deactivated.enabled");
+        this.deactivatedSoundType = Sound.valueOf(configFile.getString("settings.sounds.pvp-deactivated.type").toUpperCase());
+        this.deactivatedSoundVolume = (float) configFile.getDouble("settings.sounds.pvp-deactivated.volume");
+        this.deactivatedSoundPitch = (float) configFile.getDouble("settings.sounds.pvp-deactivated.pitch");
         this.sword = buildItem("sword", true);
         this.swordMaterial = this.sword.getType();
         this.helmet = buildItem("armor.helmet", false);
@@ -104,11 +100,11 @@ public final class ConfigCache {
     }
 
     private ItemStack buildItem(String path, boolean tagAsPvP) {
-        Material material = Material.valueOf(configFile.getString(path + ".material", "STONE").toUpperCase());
+        Material material = Material.valueOf(configFile.getString(path + ".material").toUpperCase());
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(MessageUtils.itemText(configFile.getString(path + ".display-name", "")));
+            meta.displayName(MessageUtils.itemText(configFile.getString(path + ".display-name")));
             List<String> lore = configFile.getStringList(path + ".lore");
             lore.removeIf(s -> s == null || s.trim().isEmpty());
             if (!lore.isEmpty()) {
@@ -137,10 +133,10 @@ public final class ConfigCache {
 
     private void applyTrim(ItemMeta meta, String path) {
         if (!(meta instanceof ArmorMeta armorMeta)) return;
-        if (!configFile.getBoolean(path + ".trim.enabled", false)) return;
+        if (!configFile.getBoolean(path + ".trim.enabled")) return;
 
-        String patternName = configFile.getString(path + ".trim.pattern", "sentry").toLowerCase();
-        String materialName = configFile.getString(path + ".trim.material", "netherite").toLowerCase();
+        String patternName = configFile.getString(path + ".trim.pattern").toLowerCase();
+        String materialName = configFile.getString(path + ".trim.material").toLowerCase();
 
         TrimPattern pattern = Registry.TRIM_PATTERN.get(NamespacedKey.minecraft(patternName));
         TrimMaterial trimMat = Registry.TRIM_MATERIAL.get(NamespacedKey.minecraft(materialName));
@@ -175,9 +171,6 @@ public final class ConfigCache {
         return boots.clone();
     }
 
-    public int getHoldTimeTicks() {
-        return holdTimeTicks;
-    }
 
     public int getHoldTimeSeconds() {
         return holdTimeSeconds;
@@ -227,10 +220,6 @@ public final class ConfigCache {
     public float getDeactivatedSoundPitch() { return deactivatedSoundPitch; }
 
     public String getMessage(String key) {
-        return messages.getOrDefault(key, "<red>Messaggio mancante: " + key);
-    }
-
-    public NamespacedKey getPvpKey() {
-        return pvpKey;
+        return messages.getOrDefault(key, "<red>Message not found: " + key);
     }
 }

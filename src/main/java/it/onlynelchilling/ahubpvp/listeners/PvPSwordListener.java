@@ -2,11 +2,9 @@ package it.onlynelchilling.ahubpvp.listeners;
 
 import it.onlynelchilling.ahubpvp.HubPvPSword;
 import it.onlynelchilling.ahubpvp.config.ConfigCache;
-import it.onlynelchilling.ahubpvp.utils.CounterTask;
 import it.onlynelchilling.ahubpvp.utils.MessageUtils;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
-import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
@@ -23,7 +21,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.scheduler.BukkitTask;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -34,21 +34,72 @@ public final class PvPSwordListener implements Listener {
     private static final int CENTER_SLOT = 4;
 
     private final HubPvPSword plugin;
-    private final Map<UUID, CounterTask> activateTasks = new ConcurrentHashMap<>();
-    private final Map<UUID, CounterTask> deactivateTasks = new ConcurrentHashMap<>();
+    private final ConfigCache cache;
+    private final BukkitTask tickTask;
+
+    private final Map<UUID, Integer> activateCountdowns = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> deactivateCountdowns = new ConcurrentHashMap<>();
     private final Set<UUID> pvpActive = ConcurrentHashMap.newKeySet();
     private final Map<UUID, ItemStack[]> savedContents = new ConcurrentHashMap<>();
-    private final Map<UUID, ItemStack[]> savedArmor = new ConcurrentHashMap<>();
-
-    private ConfigCache cache;
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;
         this.cache = plugin.getConfigCache();
+        this.tickTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 20L, 20L);
     }
 
-    public void refreshCache() {
-        this.cache = plugin.getConfigCache();
+    private void tick() {
+        ConfigCache c = this.cache;
+
+        Iterator<Map.Entry<UUID, Integer>> actIt = activateCountdowns.entrySet().iterator();
+        while (actIt.hasNext()) {
+            Map.Entry<UUID, Integer> entry = actIt.next();
+            UUID uuid = entry.getKey();
+            Player player = plugin.getServer().getPlayer(uuid);
+
+            if (player == null || !player.isOnline() || !c.isPvPSword(player.getInventory().getItemInMainHand())) {
+                actIt.remove();
+                continue;
+            }
+
+            int remaining = entry.getValue();
+            if (remaining <= 0) {
+                actIt.remove();
+                plugin.getServer().getScheduler().runTask(plugin, () -> activatePvP(player));
+                continue;
+            }
+
+            MessageUtils.send(player, c.getMessage("countdown"), "%seconds%", String.valueOf(remaining));
+            if (c.isCountdownSoundEnabled()) {
+                player.playSound(player.getLocation(), c.getCountdownSoundType(), c.getCountdownSoundVolume(), c.getCountdownSoundPitch());
+            }
+            entry.setValue(remaining - 1);
+        }
+
+        Iterator<Map.Entry<UUID, Integer>> deactIt = deactivateCountdowns.entrySet().iterator();
+        while (deactIt.hasNext()) {
+            Map.Entry<UUID, Integer> entry = deactIt.next();
+            UUID uuid = entry.getKey();
+            Player player = plugin.getServer().getPlayer(uuid);
+
+            if (player == null || !player.isOnline()) {
+                deactIt.remove();
+                continue;
+            }
+
+            int remaining = entry.getValue();
+            if (remaining <= 0) {
+                deactIt.remove();
+                plugin.getServer().getScheduler().runTask(plugin, () -> deactivatePvP(player));
+                continue;
+            }
+
+            MessageUtils.send(player, c.getMessage("countdown-deactivate"), "%seconds%", String.valueOf(remaining));
+            if (c.isCountdownSoundEnabled()) {
+                player.playSound(player.getLocation(), c.getCountdownSoundType(), c.getCountdownSoundVolume(), c.getCountdownSoundPitch());
+            }
+            entry.setValue(remaining - 1);
+        }
     }
 
     @EventHandler
@@ -68,65 +119,17 @@ public final class PvPSwordListener implements Listener {
         boolean holdingSword = c.isPvPSword(newItem);
 
         if (holdingSword) {
-            cancelDeactivateTask(uuid);
+            deactivateCountdowns.remove(uuid);
 
-            if (pvpActive.contains(uuid) || activateTasks.containsKey(uuid)) return;
+            if (pvpActive.contains(uuid) || activateCountdowns.containsKey(uuid)) return;
 
-            int seconds = c.getHoldTimeSeconds();
-            String countdownMsg = c.getMessage("countdown");
-            boolean soundEnabled = c.isCountdownSoundEnabled();
-            Sound soundType = soundEnabled ? c.getCountdownSoundType() : null;
-            float soundVol = soundEnabled ? c.getCountdownSoundVolume() : 0;
-            float soundPitch = soundEnabled ? c.getCountdownSoundPitch() : 0;
-
-            CounterTask task = CounterTask.builder()
-                    .reach(seconds)
-                    .shouldStop(() -> !player.isOnline() || !c.isPvPSword(player.getInventory().getItemInMainHand()))
-                    .onStop(() -> activateTasks.remove(uuid))
-                    .onTick(remaining -> {
-                        MessageUtils.send(player, countdownMsg, "%seconds%", String.valueOf(remaining));
-                        if (soundEnabled) {
-                            player.playSound(player.getLocation(), soundType, soundVol, soundPitch);
-                        }
-                    })
-                    .onComplete(() -> {
-                        activateTasks.remove(uuid);
-                        activatePvP(player);
-                    })
-                    .build();
-
-            activateTasks.put(uuid, task);
-            task.start(plugin);
+            activateCountdowns.put(uuid, c.getHoldTimeSeconds());
         } else {
-            cancelActivateTask(uuid);
+            activateCountdowns.remove(uuid);
 
-            if (!pvpActive.contains(uuid) || deactivateTasks.containsKey(uuid)) return;
+            if (!pvpActive.contains(uuid) || deactivateCountdowns.containsKey(uuid)) return;
 
-            int seconds = c.getDeactivateTimeSeconds();
-            String deactivateMsg = c.getMessage("countdown-deactivate");
-            boolean soundEnabled = c.isCountdownSoundEnabled();
-            Sound soundType = soundEnabled ? c.getCountdownSoundType() : null;
-            float soundVol = soundEnabled ? c.getCountdownSoundVolume() : 0;
-            float soundPitch = soundEnabled ? c.getCountdownSoundPitch() : 0;
-
-            CounterTask task = CounterTask.builder()
-                    .reach(seconds)
-                    .shouldStop(() -> !player.isOnline())
-                    .onStop(() -> deactivateTasks.remove(uuid))
-                    .onTick(remaining -> {
-                        MessageUtils.send(player, deactivateMsg, "%seconds%", String.valueOf(remaining));
-                        if (soundEnabled) {
-                            player.playSound(player.getLocation(), soundType, soundVol, soundPitch);
-                        }
-                    })
-                    .onComplete(() -> {
-                        deactivateTasks.remove(uuid);
-                        deactivatePvP(player);
-                    })
-                    .build();
-
-            deactivateTasks.put(uuid, task);
-            task.start(plugin);
+            deactivateCountdowns.put(uuid, c.getDeactivateTimeSeconds());
         }
     }
 
@@ -161,15 +164,15 @@ public final class PvPSwordListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
-        cancelActivateTask(event.getPlayer().getUniqueId());
+        activateCountdowns.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        cancelActivateTask(uuid);
-        cancelDeactivateTask(uuid);
+        activateCountdowns.remove(uuid);
+        deactivateCountdowns.remove(uuid);
         if (pvpActive.remove(uuid)) {
             restoreInventory(player);
         }
@@ -208,7 +211,6 @@ public final class PvPSwordListener implements Listener {
             }
             pvpActive.remove(victim.getUniqueId());
             savedContents.remove(victim.getUniqueId());
-            savedArmor.remove(victim.getUniqueId());
         }
 
         if (c.isInstantRespawn()) {
@@ -229,7 +231,6 @@ public final class PvPSwordListener implements Listener {
 
         PlayerInventory inv = player.getInventory();
         savedContents.put(uuid, inv.getContents().clone());
-        savedArmor.put(uuid, inv.getArmorContents().clone());
 
         pvpActive.add(uuid);
         inv.clear();
@@ -268,29 +269,21 @@ public final class PvPSwordListener implements Listener {
         }
     }
 
-    public CounterTask getActivateTask(UUID playerId) {
-        return activateTasks.get(playerId);
-    }
+    private void restoreInventory(Player player) {
+        UUID uuid = player.getUniqueId();
+        PlayerInventory inv = player.getInventory();
+        inv.clear();
 
-    public CounterTask getDeactivateTask(UUID playerId) {
-        return deactivateTasks.get(playerId);
-    }
-
-    public void cancelActivateTask(UUID playerId) {
-        CounterTask task = activateTasks.remove(playerId);
-        if (task != null) task.cancel();
-    }
-
-    public void cancelDeactivateTask(UUID playerId) {
-        CounterTask task = deactivateTasks.remove(playerId);
-        if (task != null) task.cancel();
+        ItemStack[] contents = savedContents.remove(uuid);
+        if (contents != null) {
+            inv.setContents(contents);
+        }
     }
 
     public void cleanup() {
-        activateTasks.values().forEach(CounterTask::cancel);
-        activateTasks.clear();
-        deactivateTasks.values().forEach(CounterTask::cancel);
-        deactivateTasks.clear();
+        tickTask.cancel();
+        activateCountdowns.clear();
+        deactivateCountdowns.clear();
 
         for (UUID uuid : Set.copyOf(pvpActive)) {
             Player player = plugin.getServer().getPlayer(uuid);
@@ -301,30 +294,5 @@ public final class PvPSwordListener implements Listener {
 
         pvpActive.clear();
         savedContents.clear();
-        savedArmor.clear();
-    }
-
-    private void restoreInventory(Player player) {
-        UUID uuid = player.getUniqueId();
-        PlayerInventory inv = player.getInventory();
-        inv.clear();
-
-        ItemStack[] contents = savedContents.remove(uuid);
-        ItemStack[] armor = savedArmor.remove(uuid);
-        if (contents != null) {
-            inv.setContents(contents);
-        }
-        if (armor != null) {
-            inv.setArmorContents(armor);
-        } else {
-            inv.setHelmet(null);
-            inv.setChestplate(null);
-            inv.setLeggings(null);
-            inv.setBoots(null);
-        }
-    }
-
-    public Set<UUID> getPvpActive() {
-        return pvpActive;
     }
 }

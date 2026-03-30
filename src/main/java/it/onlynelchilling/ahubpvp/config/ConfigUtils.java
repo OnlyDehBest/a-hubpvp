@@ -1,6 +1,5 @@
 package it.onlynelchilling.ahubpvp.config;
 
-import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -32,9 +31,6 @@ public class ConfigUtils {
         mergeDefaults();
     }
 
-    public File getFile() { return file; }
-    public YamlConfiguration getConfig() { return config; }
-    public String getFileName() { return fileName; }
 
     public void reload() {
         config = YamlConfiguration.loadConfiguration(file);
@@ -304,51 +300,10 @@ public class ConfigUtils {
         return c;
     }
 
-    public void save() {
-        try {
-            config.save(file);
-            config = YamlConfiguration.loadConfiguration(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save " + fileName);
-        }
-    }
-
-    public Object get(String path) { return config.get(path); }
-    public String getString(String path, String def) { return config.getString(path, def); }
     public String getString(String path) { return config.getString(path); }
-    public int getInt(String path, int def) { return config.getInt(path, def); }
     public int getInt(String path) { return config.getInt(path); }
-    public boolean getBoolean(String path, boolean def) { return config.getBoolean(path, def); }
     public boolean getBoolean(String path) { return config.getBoolean(path); }
-    public double getDouble(String path, double def) { return config.getDouble(path, def); }
     public double getDouble(String path) { return config.getDouble(path); }
-    public long getLong(String path, long def) { return config.getLong(path, def); }
-    public long getLong(String path) { return config.getLong(path); }
     public List<String> getStringList(String path) { return config.getStringList(path); }
-    public List<Integer> getIntegerList(String path) { return config.getIntegerList(path); }
-    public List<Map<?, ?>> getMapList(String path) { return config.getMapList(path); }
-
-    public Map<String, Object> getMap(String path, Map<String, Object> def) {
-        return config.getConfigurationSection(path) != null
-                ? config.getConfigurationSection(path).getValues(false) : def;
-    }
-
-    public Map<String, Object> getMap(String path) {
-        return config.getConfigurationSection(path) != null
-                ? config.getConfigurationSection(path).getValues(false) : null;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T get(String path, Class<T> clazz, T def) {
-        return config.get(path, clazz) != null ? (T) config.get(path, clazz) : def;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T get(String path, Class<T> clazz) { return (T) config.get(path, clazz); }
-
     public ConfigurationSection getConfigurationSection(String path) { return config.getConfigurationSection(path); }
-    public Location getLocation(String path, Location def) { return config.getLocation(path, def); }
-    public Location getLocation(String path) { return config.getLocation(path); }
-    public void set(String path, Object o) { config.set(path, o); }
-    public Set<String> getKeys(boolean deep) { return config.getKeys(deep); }
 }

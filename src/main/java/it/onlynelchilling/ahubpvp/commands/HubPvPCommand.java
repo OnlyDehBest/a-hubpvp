@@ -25,7 +25,6 @@ public final class HubPvPCommand extends BaseCommand {
     @CommandPermission("hubpvp.reload")
     public void onReload(Player player) {
         plugin.getConfigCache().reload();
-        plugin.getSwordListener().refreshCache();
         MessageUtils.send(player, plugin.getConfigCache().getMessage("config-reloaded"));
     }
 }
