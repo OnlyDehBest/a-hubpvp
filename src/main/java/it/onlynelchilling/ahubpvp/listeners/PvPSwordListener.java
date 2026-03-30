@@ -65,7 +65,7 @@ public final class PvPSwordListener implements Listener {
             int remaining = entry.getValue();
             if (remaining <= 0) {
                 actIt.remove();
-                plugin.getServer().getScheduler().runTask(plugin, () -> activatePvP(player));
+                activatePvP(player);
                 continue;
             }
 
@@ -90,7 +90,7 @@ public final class PvPSwordListener implements Listener {
             int remaining = entry.getValue();
             if (remaining <= 0) {
                 deactIt.remove();
-                plugin.getServer().getScheduler().runTask(plugin, () -> deactivatePvP(player));
+                deactivatePvP(player);
                 continue;
             }
 
