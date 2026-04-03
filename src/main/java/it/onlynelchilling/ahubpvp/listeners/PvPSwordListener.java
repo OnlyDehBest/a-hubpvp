@@ -22,6 +22,7 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.potion.PotionEffect;
 
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public final class PvPSwordListener implements Listener {
     private final Map<UUID, Integer> deactivateCountdowns = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> pvpActive = new ConcurrentHashMap<>();
     private final Map<UUID, ItemStack[]> savedContents = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> savedFlightState = new ConcurrentHashMap<>();
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;
@@ -58,7 +60,19 @@ public final class PvPSwordListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         if (!getCache().isGiveOnJoin()) return;
 
-        event.getPlayer().getInventory().setItem(getCache().getSwordSlot(), getCache().getSword());
+        Player player = event.getPlayer();
+        int delay = getCache().getGiveOnJoinDelay();
+
+        if (delay <= 0) {
+            player.getInventory().setItem(getCache().getSwordSlot(), getCache().getSword());
+            return;
+        }
+
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) {
+                player.getInventory().setItem(getCache().getSwordSlot(), getCache().getSword());
+            }
+        }, delay);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -130,9 +144,16 @@ public final class PvPSwordListener implements Listener {
 
         if (pvpActive.remove(uuid) != null) {
             restoreInventory(player);
+
+            Boolean hadFlight = savedFlightState.remove(uuid);
+
+            if (hadFlight != null && hadFlight) {
+                player.setAllowFlight(true);
+            }
         }
 
         savedContents.remove(uuid);
+        savedFlightState.remove(uuid);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -195,9 +216,17 @@ public final class PvPSwordListener implements Listener {
         PlayerInventory inv = player.getInventory();
 
         savedContents.put(uuid, inv.getContents().clone());
+        savedFlightState.put(uuid, player.getAllowFlight());
 
         pvpActive.put(uuid, true);
         inv.clear();
+
+        for (PotionEffect effect : player.getActivePotionEffects()) {
+            player.removePotionEffect(effect.getType());
+        }
+
+        player.setFlying(false);
+        player.setAllowFlight(false);
 
         inv.setHelmet(getCache().getHelmet());
         inv.setChestplate(getCache().getChestplate());
@@ -219,6 +248,12 @@ public final class PvPSwordListener implements Listener {
 
         pvpActive.remove(uuid);
         restoreInventory(player);
+
+        Boolean hadFlight = savedFlightState.remove(uuid);
+
+        if (hadFlight != null && hadFlight) {
+            player.setAllowFlight(true);
+        }
 
         healFull(player);
         MessageUtils.send(player, getCache().getMessage("pvp-deactivated"));
@@ -268,8 +303,15 @@ public final class PvPSwordListener implements Listener {
 
             iterator.remove();
             restoreInventory(player);
+
+            Boolean hadFlight = savedFlightState.remove(uuid);
+
+            if (hadFlight != null && hadFlight) {
+                player.setAllowFlight(true);
+            }
         }
 
         savedContents.clear();
+        savedFlightState.clear();
     }
 }

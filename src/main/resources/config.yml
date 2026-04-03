@@ -1,5 +1,6 @@
 settings:
   give-on-join: true
+  give-on-join-delay: 20 # Delay in ticks (20 ticks = 1 second)
 
   death-particle:
     enabled: true

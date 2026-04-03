@@ -38,6 +38,7 @@ public final class ConfigCache {
     private int swordSlot;
 
     private boolean giveOnJoin;
+    private int giveOnJoinDelay;
     private boolean instantRespawn;
 
     private boolean deathParticleEnabled;
@@ -75,6 +76,7 @@ public final class ConfigCache {
         this.swordSlot = configFile.getInt("sword.slot");
 
         this.giveOnJoin = configFile.getBoolean("settings.give-on-join");
+        this.giveOnJoinDelay = configFile.getInt("settings.give-on-join-delay");
         this.instantRespawn = configFile.getBoolean("settings.instant-respawn");
 
         this.deathParticleEnabled = configFile.getBoolean("settings.death-particle.enabled");
@@ -210,6 +212,10 @@ public final class ConfigCache {
 
     public boolean isGiveOnJoin() {
         return giveOnJoin;
+    }
+
+    public int getGiveOnJoinDelay() {
+        return giveOnJoinDelay;
     }
 
     public boolean isInstantRespawn() {
