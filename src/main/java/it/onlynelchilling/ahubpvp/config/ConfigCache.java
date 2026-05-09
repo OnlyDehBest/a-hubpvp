@@ -1,5 +1,7 @@
 package it.onlynelchilling.ahubpvp.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import it.onlynelchilling.ahubpvp.HubPvPSword;
 import it.onlynelchilling.ahubpvp.utils.MessageUtils;
 import org.bukkit.Material;
@@ -17,7 +19,6 @@ import org.bukkit.inventory.meta.trim.TrimMaterial;
 import org.bukkit.inventory.meta.trim.TrimPattern;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -60,7 +61,8 @@ public final class ConfigCache {
     private float deactivatedSoundVolume;
     private float deactivatedSoundPitch;
 
-    private final Map<String, String> messages = new HashMap<>();
+    private final Cache<String, String> messagesCache = Caffeine.newBuilder().build();
+    private final Map<String, String> messages = messagesCache.asMap();
 
     public ConfigCache(HubPvPSword plugin) {
         this.pvpKey = new NamespacedKey(plugin, "pvp_sword");

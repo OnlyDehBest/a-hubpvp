@@ -1,5 +1,7 @@
 package it.onlynelchilling.ahubpvp.listeners;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import it.onlynelchilling.ahubpvp.HubPvPSword;
 import it.onlynelchilling.ahubpvp.config.ConfigCache;
 import it.onlynelchilling.ahubpvp.utils.MessageUtils;
@@ -26,7 +28,7 @@ import org.bukkit.potion.PotionEffect;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class PvPSwordListener implements Listener {
 
@@ -34,11 +36,17 @@ public final class PvPSwordListener implements Listener {
 
     private final HubPvPSword plugin;
 
-    private final Map<UUID, Integer> activateCountdowns = new ConcurrentHashMap<>();
-    private final Map<UUID, Integer> deactivateCountdowns = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> pvpActive = new ConcurrentHashMap<>();
-    private final Map<UUID, ItemStack[]> savedContents = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> savedFlightState = new ConcurrentHashMap<>();
+    private final Cache<UUID, Integer> activateCountdownsCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Integer> deactivateCountdownsCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Boolean> pvpActiveCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, ItemStack[]> savedContentsCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Boolean> savedFlightStateCache = Caffeine.newBuilder().build();
+
+    private final ConcurrentMap<UUID, Integer> activateCountdowns = activateCountdownsCache.asMap();
+    private final ConcurrentMap<UUID, Integer> deactivateCountdowns = deactivateCountdownsCache.asMap();
+    private final ConcurrentMap<UUID, Boolean> pvpActive = pvpActiveCache.asMap();
+    private final ConcurrentMap<UUID, ItemStack[]> savedContents = savedContentsCache.asMap();
+    private final ConcurrentMap<UUID, Boolean> savedFlightState = savedFlightStateCache.asMap();
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;

@@ -38,6 +38,11 @@
             <artifactId>acf-paper</artifactId>
             <version>0.5.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.2.4</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -61,6 +66,10 @@
                                 <relocation>
                                     <pattern>co.aikar.locales</pattern>
                                     <shadedPattern>it.onlynelchilling.ahubpvp.locales</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.github.benmanes.caffeine</pattern>
+                                    <shadedPattern>it.onlynelchilling.ahubpvp.caffeine</shadedPattern>
                                 </relocation>
                             </relocations>
                             <minimizeJar>true</minimizeJar>

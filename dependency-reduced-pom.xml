@@ -25,6 +25,10 @@
                   <pattern>co.aikar.locales</pattern>
                   <shadedPattern>it.onlynelchilling.ahubpvp.locales</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>com.github.benmanes.caffeine</pattern>
+                  <shadedPattern>it.onlynelchilling.ahubpvp.caffeine</shadedPattern>
+                </relocation>
               </relocations>
               <minimizeJar>true</minimizeJar>
             </configuration>
