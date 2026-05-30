@@ -45,6 +45,7 @@ public final class PvPSwordListener implements Listener {
     private final Cache<UUID, Boolean> savedFlightStateCache = Caffeine.newBuilder().build();
     private final Cache<UUID, Collection<PotionEffect>> savedPotionEffectsCache = Caffeine.newBuilder().build();
     private final Cache<UUID, Integer> combatTagCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Boolean> combatTagNotifiedCache = Caffeine.newBuilder().build();
 
     private final ConcurrentMap<UUID, Integer> activateCountdowns = activateCountdownsCache.asMap();
     private final ConcurrentMap<UUID, Integer> deactivateCountdowns = deactivateCountdownsCache.asMap();
@@ -53,6 +54,7 @@ public final class PvPSwordListener implements Listener {
     private final ConcurrentMap<UUID, Boolean> savedFlightState = savedFlightStateCache.asMap();
     private final ConcurrentMap<UUID, Collection<PotionEffect>> savedPotionEffects = savedPotionEffectsCache.asMap();
     private final ConcurrentMap<UUID, Integer> combatTag = combatTagCache.asMap();
+    private final ConcurrentMap<UUID, Boolean> combatTagNotified = combatTagNotifiedCache.asMap();
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;
@@ -68,6 +70,10 @@ public final class PvPSwordListener implements Listener {
 
     public ConcurrentMap<UUID, Integer> getCombatTag() {
         return combatTag;
+    }
+
+    public void clearCombatTagNotified(UUID uuid) {
+        combatTagNotified.remove(uuid);
     }
 
     public ConfigCache getCache() {
@@ -114,7 +120,10 @@ public final class PvPSwordListener implements Listener {
                 if (tagSeconds != null && tagSeconds > 0) {
                     event.setCancelled(true);
                     player.getInventory().setHeldItemSlot(CENTER_SLOT);
-                    MessageUtils.send(player, getCache().getMessage("combat-tagged"), "%seconds%", String.valueOf(tagSeconds));
+
+                    if (combatTagNotified.putIfAbsent(uuid, true) == null) {
+                        MessageUtils.send(player, getCache().getMessage("combat-tagged"), "%seconds%", String.valueOf(tagSeconds));
+                    }
                     return;
                 }
             }
@@ -184,6 +193,7 @@ public final class PvPSwordListener implements Listener {
         activateCountdowns.remove(uuid);
         deactivateCountdowns.remove(uuid);
         combatTag.remove(uuid);
+        combatTagNotified.remove(uuid);
 
         if (pvpActive.remove(uuid) != null) {
             restoreInventory(player);
@@ -261,6 +271,7 @@ public final class PvPSwordListener implements Listener {
 
         pvpActive.remove(uuid);
         combatTag.remove(uuid);
+        combatTagNotified.remove(uuid);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -397,5 +408,6 @@ public final class PvPSwordListener implements Listener {
         savedFlightState.clear();
         savedPotionEffects.clear();
         combatTag.clear();
+        combatTagNotified.clear();
     }
 }

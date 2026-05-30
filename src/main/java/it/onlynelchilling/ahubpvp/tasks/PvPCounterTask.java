@@ -66,6 +66,7 @@ public final class PvPCounterTask implements Runnable {
                 entry.setValue(seconds - 1);
             } else {
                 tagIt.remove();
+                service.clearCombatTagNotified(uuid);
 
                 ItemStack held = player.getInventory().getItemInMainHand();
 
