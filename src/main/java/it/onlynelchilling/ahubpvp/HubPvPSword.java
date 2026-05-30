@@ -18,7 +18,7 @@ public final class HubPvPSword extends JavaPlugin {
 
         this.swordListener = new PvPSwordListener(this);
         getServer().getPluginManager().registerEvents(swordListener, this);
-        getServer().getScheduler().runTaskTimerAsynchronously(this, new PvPCounterTask(swordListener), 20L, 20L);
+        getServer().getScheduler().runTaskTimerAsynchronously(this, new PvPCounterTask(this, swordListener), 20L, 20L);
 
         PaperCommandManager commandManager = new PaperCommandManager(this);
         commandManager.registerCommand(new HubPvPCommand(this));

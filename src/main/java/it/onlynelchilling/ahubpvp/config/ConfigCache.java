@@ -36,6 +36,7 @@ public final class ConfigCache {
 
     private int holdTimeSeconds;
     private int deactivateTimeSeconds;
+    private int combatTagSeconds;
     private int swordSlot;
 
     private boolean giveOnJoin;
@@ -75,6 +76,7 @@ public final class ConfigCache {
 
         this.holdTimeSeconds = configFile.getInt("sword.hold-time-seconds");
         this.deactivateTimeSeconds = configFile.getInt("sword.deactivate-time-seconds");
+        this.combatTagSeconds = configFile.getInt("sword.combat-tag-seconds");
         this.swordSlot = configFile.getInt("sword.slot");
 
         this.giveOnJoin = configFile.getBoolean("settings.give-on-join");
@@ -206,6 +208,10 @@ public final class ConfigCache {
 
     public int getDeactivateTimeSeconds() {
         return deactivateTimeSeconds;
+    }
+
+    public int getCombatTagSeconds() {
+        return combatTagSeconds;
     }
 
     public int getSwordSlot() {

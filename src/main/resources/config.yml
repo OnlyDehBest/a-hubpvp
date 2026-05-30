@@ -30,6 +30,7 @@ sword:
   lore: ""
   hold-time-seconds: 5
   deactivate-time-seconds: 5
+  combat-tag-seconds: 10
   slot: 7
   enchantments:
     SHARPNESS: 3
@@ -86,3 +87,4 @@ messages:
   countdown-deactivate: "&4&lPVP &8➟ &fLa modalità PvP si &cdisattiverà &ftra &e%seconds% secondi..."
   pvp-deactivated: "&4&lPVP &8➟ &cHai disattivato la modalità PvP!"
   kill-message: "&6⚔ &e%killer% &7ha ucciso &c%victim%&7!"
+  combat-tagged: "&4&lPVP &8➟ &cNon puoi uscire dal PvP mentre sei in combattimento! &e(%seconds%s)"

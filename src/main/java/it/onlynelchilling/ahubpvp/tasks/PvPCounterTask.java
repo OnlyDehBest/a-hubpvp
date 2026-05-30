@@ -1,17 +1,21 @@
 package it.onlynelchilling.ahubpvp.tasks;
 
+import it.onlynelchilling.ahubpvp.HubPvPSword;
 import it.onlynelchilling.ahubpvp.listeners.PvPSwordListener;
 import it.onlynelchilling.ahubpvp.utils.MessageUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.UUID;
 
 public final class PvPCounterTask implements Runnable {
 
+    private final HubPvPSword plugin;
     private final PvPSwordListener service;
 
-    public PvPCounterTask(PvPSwordListener service) {
+    public PvPCounterTask(HubPvPSword plugin, PvPSwordListener service) {
+        this.plugin = plugin;
         this.service = service;
     }
 
@@ -40,7 +44,34 @@ public final class PvPCounterTask implements Runnable {
                 }
             } else {
                 actIt.remove();
-                service.activatePvP(player);
+                Bukkit.getScheduler().runTask(plugin, () -> service.activatePvP(player));
+            }
+        }
+
+        var tagIt = service.getCombatTag().entrySet().iterator();
+
+        while (tagIt.hasNext()) {
+            var entry = tagIt.next();
+
+            UUID uuid = entry.getKey();
+            int seconds = entry.getValue();
+            Player player = Bukkit.getPlayer(uuid);
+
+            if (player == null || !player.isOnline()) {
+                tagIt.remove();
+                continue;
+            }
+
+            if (seconds > 1) {
+                entry.setValue(seconds - 1);
+            } else {
+                tagIt.remove();
+
+                ItemStack held = player.getInventory().getItemInMainHand();
+
+                if (!service.getCache().isPvPSword(held) && !service.getDeactivateCountdowns().containsKey(uuid)) {
+                    service.getDeactivateCountdowns().put(uuid, service.getCache().getDeactivateTimeSeconds());
+                }
             }
         }
 
@@ -67,7 +98,7 @@ public final class PvPCounterTask implements Runnable {
                 }
             } else {
                 deactIt.remove();
-                service.deactivatePvP(player);
+                Bukkit.getScheduler().runTask(plugin, () -> service.deactivatePvP(player));
             }
         }
     }

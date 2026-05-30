@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -26,7 +27,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 
-import java.util.Map;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,23 +43,31 @@ public final class PvPSwordListener implements Listener {
     private final Cache<UUID, Boolean> pvpActiveCache = Caffeine.newBuilder().build();
     private final Cache<UUID, ItemStack[]> savedContentsCache = Caffeine.newBuilder().build();
     private final Cache<UUID, Boolean> savedFlightStateCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Collection<PotionEffect>> savedPotionEffectsCache = Caffeine.newBuilder().build();
+    private final Cache<UUID, Integer> combatTagCache = Caffeine.newBuilder().build();
 
     private final ConcurrentMap<UUID, Integer> activateCountdowns = activateCountdownsCache.asMap();
     private final ConcurrentMap<UUID, Integer> deactivateCountdowns = deactivateCountdownsCache.asMap();
     private final ConcurrentMap<UUID, Boolean> pvpActive = pvpActiveCache.asMap();
     private final ConcurrentMap<UUID, ItemStack[]> savedContents = savedContentsCache.asMap();
     private final ConcurrentMap<UUID, Boolean> savedFlightState = savedFlightStateCache.asMap();
+    private final ConcurrentMap<UUID, Collection<PotionEffect>> savedPotionEffects = savedPotionEffectsCache.asMap();
+    private final ConcurrentMap<UUID, Integer> combatTag = combatTagCache.asMap();
 
     public PvPSwordListener(HubPvPSword plugin) {
         this.plugin = plugin;
     }
 
-    public Map<UUID, Integer> getActivateCountdowns() {
+    public ConcurrentMap<UUID, Integer> getActivateCountdowns() {
         return activateCountdowns;
     }
 
-    public Map<UUID, Integer> getDeactivateCountdowns() {
+    public ConcurrentMap<UUID, Integer> getDeactivateCountdowns() {
         return deactivateCountdowns;
+    }
+
+    public ConcurrentMap<UUID, Integer> getCombatTag() {
+        return combatTag;
     }
 
     public ConfigCache getCache() {
@@ -83,7 +93,7 @@ public final class PvPSwordListener implements Listener {
         }, delay);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemHeld(PlayerItemHeldEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
@@ -98,6 +108,17 @@ public final class PvPSwordListener implements Listener {
 
             activateCountdowns.put(uuid, getCache().getHoldTimeSeconds());
         } else {
+            if (pvpActive.containsKey(uuid)) {
+                Integer tagSeconds = combatTag.get(uuid);
+
+                if (tagSeconds != null && tagSeconds > 0) {
+                    event.setCancelled(true);
+                    player.getInventory().setHeldItemSlot(CENTER_SLOT);
+                    MessageUtils.send(player, getCache().getMessage("combat-tagged"), "%seconds%", String.valueOf(tagSeconds));
+                    return;
+                }
+            }
+
             activateCountdowns.remove(uuid);
 
             if (!pvpActive.containsKey(uuid) || deactivateCountdowns.containsKey(uuid)) return;
@@ -127,6 +148,11 @@ public final class PvPSwordListener implements Listener {
         if (pvpActive.containsKey(uuid)) {
             int slot = event.getSlot();
 
+            if (slot == CENTER_SLOT || event.getHotbarButton() == CENTER_SLOT) {
+                event.setCancelled(true);
+                return;
+            }
+
             if (slot >= 36 && slot <= 39) {
                 event.setCancelled(true);
             }
@@ -137,9 +163,17 @@ public final class PvPSwordListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
-        activateCountdowns.remove(event.getPlayer().getUniqueId());
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        if (pvpActive.containsKey(uuid)) {
+            event.setCancelled(true);
+            return;
+        }
+
+        activateCountdowns.remove(uuid);
     }
 
     @EventHandler
@@ -149,9 +183,11 @@ public final class PvPSwordListener implements Listener {
 
         activateCountdowns.remove(uuid);
         deactivateCountdowns.remove(uuid);
+        combatTag.remove(uuid);
 
         if (pvpActive.remove(uuid) != null) {
             restoreInventory(player);
+            restorePotionEffects(player);
 
             Boolean hadFlight = savedFlightState.remove(uuid);
 
@@ -162,6 +198,19 @@ public final class PvPSwordListener implements Listener {
 
         savedContents.remove(uuid);
         savedFlightState.remove(uuid);
+        savedPotionEffects.remove(uuid);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPotionEffect(EntityPotionEffectEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (!pvpActive.containsKey(player.getUniqueId())) return;
+
+        EntityPotionEffectEvent.Action action = event.getAction();
+
+        if (action == EntityPotionEffectEvent.Action.ADDED || action == EntityPotionEffectEvent.Action.CHANGED) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -170,7 +219,16 @@ public final class PvPSwordListener implements Listener {
 
         if (!pvpActive.containsKey(attacker.getUniqueId()) || !pvpActive.containsKey(victim.getUniqueId())) {
             event.setCancelled(true);
+            return;
         }
+
+        int tagSeconds = getCache().getCombatTagSeconds();
+
+        combatTag.put(victim.getUniqueId(), tagSeconds);
+        deactivateCountdowns.remove(victim.getUniqueId());
+
+        combatTag.put(attacker.getUniqueId(), tagSeconds);
+        deactivateCountdowns.remove(attacker.getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -202,6 +260,7 @@ public final class PvPSwordListener implements Listener {
         }
 
         pvpActive.remove(uuid);
+        combatTag.remove(uuid);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -212,6 +271,7 @@ public final class PvPSwordListener implements Listener {
         if (!savedContents.containsKey(uuid)) return;
 
         restoreInventory(player);
+        restorePotionEffects(player);
         healFull(player);
 
         if (getCache().isGiveOnJoin()) {
@@ -228,6 +288,8 @@ public final class PvPSwordListener implements Listener {
 
         pvpActive.put(uuid, true);
         inv.clear();
+
+        savedPotionEffects.put(uuid, List.copyOf(player.getActivePotionEffects()));
 
         for (PotionEffect effect : player.getActivePotionEffects()) {
             player.removePotionEffect(effect.getType());
@@ -256,6 +318,7 @@ public final class PvPSwordListener implements Listener {
 
         pvpActive.remove(uuid);
         restoreInventory(player);
+        restorePotionEffects(player);
 
         Boolean hadFlight = savedFlightState.remove(uuid);
 
@@ -292,6 +355,16 @@ public final class PvPSwordListener implements Listener {
         }
     }
 
+    private void restorePotionEffects(Player player) {
+        Collection<PotionEffect> effects = savedPotionEffects.remove(player.getUniqueId());
+
+        if (effects == null) return;
+
+        for (PotionEffect effect : effects) {
+            player.addPotionEffect(effect);
+        }
+    }
+
     public void cleanup() {
         activateCountdowns.clear();
         deactivateCountdowns.clear();
@@ -311,6 +384,7 @@ public final class PvPSwordListener implements Listener {
 
             iterator.remove();
             restoreInventory(player);
+            restorePotionEffects(player);
 
             Boolean hadFlight = savedFlightState.remove(uuid);
 
@@ -321,5 +395,7 @@ public final class PvPSwordListener implements Listener {
 
         savedContents.clear();
         savedFlightState.clear();
+        savedPotionEffects.clear();
+        combatTag.clear();
     }
 }
